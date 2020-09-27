@@ -1,4 +1,4 @@
-//#!/usr/bin/env yaegi
+#!/usr/bin/env yaegi run "$0" "$@"
 package main
 
 import (
