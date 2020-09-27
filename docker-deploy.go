@@ -1,9 +1,9 @@
-#!/usr/bin/env yaegi
+//#!/usr/bin/env yaegi
 package main
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
