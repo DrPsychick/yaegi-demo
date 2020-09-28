@@ -1,13 +1,13 @@
-#!/usr/bin/env yaegi run "$0" "$@"
+///usr/bin/env yaegi run "$0" "$@"; exit
 package main
 
 import (
-	"os"
-	"fmt"
-	"net/http"
-	"io/ioutil"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
 )
 
 func main() {
