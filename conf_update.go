@@ -13,8 +13,8 @@ import (
 
 var (
 	debug            = false
-	removeComments   = true
-	removeEmtpyLines = true
+	removeComments   = false
+	removeEmtpyLines = false
 	indentation      = "  "
 	sectionPrefixes  = []string{"["} //, "[["}
 	sectionPostfixes = []string{"]"} //, "]]"}
@@ -111,7 +111,7 @@ func updateOrCreate(buf []byte, k Key) ([]byte, bool) {
 				isTopLevelSection = true
 			}
 			// matches key in current section level
-			if strings.HasPrefix(ltrimmed, p+k.Sections[inSection]+sectionPostfixes[i]) {
+			if hasSection && inSection < len(k.Sections) && strings.HasPrefix(ltrimmed, p+k.Sections[inSection]+sectionPostfixes[i]) {
 				matchSection = true
 			}
 		}
@@ -265,26 +265,51 @@ func updateOrCreate(buf []byte, k Key) ([]byte, bool) {
 }
 
 func main() {
-	var prefix = "PFX"
+	var conf_file = os.Getenv("CONF_UPDATE")
+	var prefix = os.Getenv("CONF_PREFIX")
+	if conf_file == "" || prefix == "" {
+		if debug {
+			fmt.Println("No CONF_UPDATE or CONF_PREFIX defined - exiting.")
+		}
+		os.Exit(0)
+	}
+	if os.Getenv("CONF_DEBUG") == "true" {
+		debug = true
+	}
+	if os.Getenv("CONF_STRIP_COMMENTS") == "true" {
+		removeComments = true
+	}
+	if os.Getenv("CONF_STRIP_EMPTYLINES") == "true" {
+		removeEmtpyLines = true
+	}
+
 	envs := envValueMatch(prefix)
 	str, _ := json.MarshalIndent(envs, "", "  ")
-	fmt.Println(string(str))
+	if debug {
+		fmt.Println(string(str))
+	}
 
 	// read the config file
-	buf, _ := ioutil.ReadFile("test.conf")
+	buf, _ := ioutil.ReadFile(conf_file)
 
 	var match bool
 	for i, k := range envs {
-		fmt.Printf("Key: %s\n", i)
+		if debug {
+			fmt.Printf("Key: %s\n", i)
+		}
 		// replace matching value or create the key in config
 		if buf, match = updateOrCreate(buf, k); match {
 			continue
 		}
-		fmt.Printf("No match: %s = %s\n", i, k.Value)
+		if debug {
+			fmt.Printf("No match: %s = %s\n", i, k.Value)
+		}
 	}
 
-	fmt.Printf("%s\n", buf)
+	if debug {
+		fmt.Printf("%s\n", buf)
+	}
 
 	// write the config file
-	ioutil.WriteFile("test.conf", buf, 0644)
+	ioutil.WriteFile(conf_file, buf, 0644)
 }
