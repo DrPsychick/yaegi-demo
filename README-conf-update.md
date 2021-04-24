@@ -4,11 +4,11 @@ Manipulate configuration files through ENV variables, so that the image is immut
 ## HowTo
 ```
 telegraf --sample-config > test.conf
-PFX_GLOBAL='global_tags|deeper|another_key="value"' PFX_CPU='inputs.cpu|percpu=false' PFX_SOME_NEW_KEY='newsection|subsection|key="value"' ./conf_update.go
+PFX_GLOBAL='global_tags|deeper|another_key="value"' PFX_CPU='inputs.cpu|percpu=false' PFX_SOME_NEW_KEY='inputs.exec|subsection|key="value"' ./conf_update.go
 ```
 
 ## TODO
-* [ ] create missing (sub-)sections
+* [x] create missing (sub-)sections
 * [ ] make configurable (`prefix`, `removeComments`, `removeEmptyLines`)
 
 ## Issues to solve

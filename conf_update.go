@@ -12,11 +12,12 @@ import (
 )
 
 var (
+	debug            = false
 	removeComments   = true
 	removeEmtpyLines = true
 	indentation      = "  "
-	sectionPrefixes  = []string{"[", "[["}
-	sectionPostfixes = []string{"]", "]]"}
+	sectionPrefixes  = []string{"["} //, "[["}
+	sectionPostfixes = []string{"]"} //, "]]"}
 )
 
 type Key struct {
@@ -60,6 +61,7 @@ func envValueMatch(prefix string) map[string]Key {
 func updateOrCreate(buf []byte, k Key) ([]byte, bool) {
 	match := false
 	hasSection := len(k.Sections) > 0
+	prefixIndex := -1
 	out := make([]byte, len(buf))
 	out = []byte{}
 
@@ -69,92 +71,195 @@ func updateOrCreate(buf []byte, k Key) ([]byte, bool) {
 		ltrimmed := strings.TrimLeft(s.Text(), "\t ")
 		// skip comments (allow whitespace at the beginning)
 		if strings.HasPrefix(ltrimmed, "#") || strings.HasPrefix(ltrimmed, "//") {
-			fmt.Print("c")
+			if debug {
+				fmt.Print("c")
+			}
 			if !removeComments {
 				out = append(out, s.Text()+"\n"...)
 			}
 			continue
 		}
+		// skip empty lines
 		if removeEmtpyLines && strings.Trim(s.Text(), "\t ") == "" {
-			print(".")
+			if debug {
+				print(".")
+			}
+			continue
+		}
+
+		// already matched -> copy rest as-is
+		if match {
+			if debug {
+				fmt.Print("-")
+			}
+			out = append(out, s.Text()+"\n"...)
 			continue
 		}
 
 		// determine if this line is a section
 		isSection := false
+		isTopLevelSection := false
 		matchSection := false
 		for i, p := range sectionPrefixes {
 			if !strings.HasPrefix(ltrimmed, p) {
 				continue
 			}
+			prefixIndex = i
 			isSection = true
-			// shortcut: skip if we're at the deepest level
-			if inSection == len(k.Sections) {
-				break
+			// matches top level section (untrimmed match)
+			if strings.HasPrefix(s.Text(), p) {
+				isTopLevelSection = true
 			}
 			// matches key in current section level
 			if strings.HasPrefix(ltrimmed, p+k.Sections[inSection]+sectionPostfixes[i]) {
 				matchSection = true
-				break
 			}
 		}
 
+		// shortcut: key has no section, but we're in a section
+		if !hasSection && isSection {
+			if debug {
+				fmt.Print("_")
+			}
+			out = append(out, s.Text()+"\n"...)
+			continue
+		}
+
+		// "descend" sub sections until at deepest level
+		if hasSection && matchSection && inSection < len(k.Sections) {
+			if debug {
+				fmt.Print("s")
+			}
+			inSection++
+			out = append(out, s.Text()+"\n"...)
+			continue
+		}
+
 		// leaving deepest level: reset section and continue
-		if inSection == len(k.Sections) && isSection {
+		if hasSection && isSection && inSection == len(k.Sections) {
 			// key not found -> create it
 			if !match {
 				ind := ""
 				for _ = range k.Sections {
 					ind += indentation
 				}
+				if debug {
+					fmt.Print("A")
+				}
 				out = append(out, ind+k.Name+" = "+k.Value+"\n"...)
-				fmt.Print("A")
+				match = true
 			}
-			fmt.Print("R")
+			if debug {
+				fmt.Print("R")
+			}
 			inSection = 0
-		}
-		// top level section
-		if inSection == 0 && hasSection && matchSection {
-			fmt.Print("S")
-			inSection = 1
 			out = append(out, s.Text()+"\n"...)
 			continue
 		}
-		// "descend" sub sections until at deepest level
-		if hasSection && len(k.Sections) > inSection {
-			if matchSection {
+
+		// leaving section without match -> add subsection(s) and key
+		if hasSection && inSection > 0 && isTopLevelSection && inSection < len(k.Sections) {
+			// add missing section(s)
+			ind := ""
+			for i, s := range k.Sections {
+				if i < inSection {
+					continue
+				}
+
+				ind = ""
+				for j := 0; j < i; j++ {
+					ind += indentation
+				}
+				sec := sectionPrefixes[prefixIndex] + s + sectionPostfixes[prefixIndex]
+				if debug {
+					fmt.Print("C")
+				}
+				out = append(out, ind+sec+"\n"...)
+			}
+			// add key
+			if debug {
+				fmt.Print("A")
+			}
+			ind += indentation
+			out = append(out, ind+k.Name+" = "+k.Value+"\n"...)
+			match = true
+
+			// current section -> continue
+			if debug {
 				fmt.Print("s")
-				inSection++
-			} else {
+			}
+			inSection = 0
+			out = append(out, s.Text()+"\n"...)
+			continue
+		}
+
+		// keys that are not in our section
+		if hasSection && !isSection && inSection < len(k.Sections) {
+			if debug {
 				fmt.Print(".")
 			}
 			out = append(out, s.Text()+"\n"...)
 			continue
 		}
+
+		// we're in the right section and need to match the key
 		// no match
 		if !strings.HasPrefix(ltrimmed, fmt.Sprintf("%s=", k.Name)) && !strings.HasPrefix(ltrimmed, fmt.Sprintf("%s =", k.Name)) {
-			fmt.Print(".")
+			if debug {
+				fmt.Print(".")
+			}
 			out = append(out, s.Text()+"\n"...)
 			continue
 		}
 
 		// match, but no change
 		if ltrimmed == k.Name+" = "+k.Value {
-			fmt.Print("k")
+			if debug {
+				fmt.Print("k")
+			}
 			out = append(out, s.Text()+"\n"...)
 			match = true
 			continue
 		}
 
 		// replace "    key_name = value"
-		fmt.Print("U")
+		if debug {
+			fmt.Print("U")
+		}
 		line := strings.Split(s.Text(), "=")[0] + "= " + k.Value + "\n"
 		out = append(out, line...)
 		match = true
 	}
-	// TODO: no match -> create new section at the end
+	// no match -> create new section at the end
+	if !match {
+		ind := ""
+		for i, s := range k.Sections {
+			if i < inSection {
+				continue
+			}
+			name := sectionPrefixes[prefixIndex] + s + sectionPostfixes[prefixIndex]
+			ind = ""
+			for j := 0; j < i; j++ {
+				ind += indentation
+			}
+			// add section(s)
+			if debug {
+				fmt.Print("C")
+			}
+			out = append(out, ind+name+"\n"...)
+		}
+		// add key with last indentation + 1
+		if debug {
+			fmt.Print("A")
+		}
+		ind += indentation
+		out = append(out, ind+k.Name+" = "+k.Value+"\n"...)
+		match = true
+	}
 
-	fmt.Println("DONE")
+	if debug {
+		fmt.Println()
+	}
 
 	return out, match
 }

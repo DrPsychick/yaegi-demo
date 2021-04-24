@@ -1,17 +1,15 @@
 ### Use `docker` library to build & push docker images
 
 ```shell
-# Does not work
+# run with mage
+go get -u github.com/magefile/mage
 go mod vendor
-./docker-deploy.go
-
-# Does work
-go mod vendor
-go build docker-deploy.go
-./docker-deploy
+mage -l
+mage build
 ```
 
 
+### Using libraries
 #### Initialize `go.mod`
 * comment out the shebang from the .go file, so that `go fmt` succeeds
 ```

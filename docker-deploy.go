@@ -1,4 +1,5 @@
-///usr/bin/env yaegi run -syscall "$0" "$@"; exit
+// +build mage
+
 package main
 
 import (
@@ -57,7 +58,9 @@ func tarFromFile() io.Reader {
 	return file
 }
 
-func main() {
+// Builds a docker image.
+// Takes 'Dockerfile' and builds it with docker go library
+func Build() {
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		panic(err)
@@ -99,3 +102,5 @@ func main() {
 		fmt.Printf("%s %s\n", container.ID[:10], container.Image)
 	}
 }
+
+var Default = Build
