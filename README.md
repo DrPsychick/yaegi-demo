@@ -1,11 +1,15 @@
 # yaegi-demo
-Playground to write "scripts" with Golang
+Example Golang "scripts" executed with `yaegi`
 
-## Works
+
+## Install yaegi
+```shell
+go get -u github.com/traefik/yaegi/cmd/yaegi
 ```
+
+## Dump GitHub repositories
+```shell
 export GITHUB_USER=DrPsychick
 export GITHUB_TOKEN=....
-yaegi run github-api.go
-
-# ./github-api.go does not work yet
+./github-api.go
 ```

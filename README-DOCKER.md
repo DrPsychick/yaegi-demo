@@ -1,8 +1,14 @@
 ### Use `docker` library to build & push docker images
 
-```
+```shell
+# Does not work
 go mod vendor
 ./docker-deploy.go
+
+# Does work
+go mod vendor
+go build docker-deploy.go
+./docker-deploy
 ```
 
 
