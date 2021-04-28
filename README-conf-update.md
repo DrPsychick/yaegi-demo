@@ -10,18 +10,18 @@ Manipulate configuration files through ENV variables, so that the image is immut
 telegraf --sample-config > test.conf
 export CONF_UPDATE=test.conf
 export CONF_PREFIX=TLG
-export CONF_STRIP_COMMENTS=false
-export CONF_STRIP_EMPTYLINES=false
-export TLG_GLOBAL='global_tags|deeper|another_key="value"'
-export TLG_CPU='[inputs.cpu]|percpu=false' 
-export TLG_SOME_NEW_KEY='[inputs.exec]|subsection|key="foo"'
-./conf_update.go
+export TLG_GLOBAL='global_tags.tag=value'
+export TLG_CPU='inputs.cpu.percpu=false' 
+export TLG_SOME_NEW_KEY='inputs.exec.subsection.key=foo'
+go mod vendor
+go build conf_update.go
+./conf_update
 telegraf --sample-config > orig.conf
 diff -u orig.conf test.conf
 ```
 
 ## Issues to solve
 * [x] `ENV` variables can not contain ".", keys and sections can
-  * [x] try `PREFIX_ANYTHING=section|sub.section|keyname="value"`
-  * docker can handle it: `docker run --rm -it -e VAR='foo|bar.name|key="ssdf"' busybox sh -c 'echo $VAR'`
+  * [x] try `PREFIX_ANYTHING=section.subsection.keyname=value`
+  * docker can handle it: `docker run --rm -it -e VAR='foo.bar.key=ssdf' busybox sh -c 'echo $VAR'`
   * also works with `--env-file`, only difference: no single quotes needed
